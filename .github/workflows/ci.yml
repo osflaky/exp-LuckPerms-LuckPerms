@@ -1,0 +1,61 @@
+name: Build Gradle and Publish Docker image
+
+on:
+  workflow_dispatch:
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-gradle:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '25'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+
+    - name: Run build and tests with Gradle wrapper
+      run: ./gradlew test build -PdockerTests
+
+    - name: Publish test report
+      uses: mikepenz/action-junit-report@v5
+      if: success() || failure()
+      with:
+        report_paths: '**/build/test-results/test/TEST-*.xml'
+        annotate_notice: true
+        detailed_summary: true
+
+    - name: Upload all artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: jars
+        path: |
+          bukkit/loader/build/libs/LuckPerms-Bukkit-*.jar
+          bukkit-legacy/loader/build/libs/LuckPerms-Bukkit-Legacy-*.jar
+          bungee/loader/build/libs/LuckPerms-Bungee-*.jar
+          sponge/loader/build/libs/LuckPerms-Sponge-*.jar
+          nukkit/loader/build/libs/LuckPerms-Nukkit-*.jar
+          velocity/build/libs/LuckPerms-Velocity-*.jar
+          fabric/build/libs/LuckPerms-Fabric-*.jar
+          forge/loader/build/libs/LuckPerms-Forge-*.jar
+          standalone/loader/build/libs/LuckPerms-Standalone-*.jar
+
+    - name: Upload standalone artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: standalone-binary
+        path: standalone/loader/build/libs/LuckPerms-Standalone-*.jar
+
+
+    name: build-gradle [ubuntu-latest--x64]
+    timeout-minutes: 150
